@@ -1,8 +1,8 @@
 package api
 
 import (
+	"github.com/CovenantSQL/pgweb/pkg/command"
 	"github.com/gin-gonic/gin"
-	"github.com/sosedoff/pgweb/pkg/command"
 )
 
 func SetupMiddlewares(group *gin.RouterGroup) {

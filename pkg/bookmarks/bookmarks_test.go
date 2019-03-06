@@ -3,8 +3,8 @@ package bookmarks
 import (
 	"testing"
 
-	"github.com/sosedoff/pgweb/pkg/command"
-	"github.com/sosedoff/pgweb/pkg/shared"
+	"github.com/CovenantSQL/pgweb/pkg/command"
+	"github.com/CovenantSQL/pgweb/pkg/shared"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,7 +73,6 @@ func Test_ReadBookmarks(t *testing.T) {
 
 func Test_GetBookmark(t *testing.T) {
 	expBookmark := Bookmark{
-
 		Host:     "localhost",
 		Port:     5432,
 		User:     "postgres",
@@ -118,23 +117,13 @@ func Test_Bookmark_SSHInfoIsEmpty(t *testing.T) {
 
 func Test_ConvertToOptions(t *testing.T) {
 	b := Bookmark{
-		Url:      "postgres://username:password@host:port/database?sslmode=disable",
-		Host:     "localhost",
-		Port:     5432,
-		User:     "postgres",
-		Password: "password",
-		Database: "mydatabase",
-		Ssl:      "disable",
+		Url:      "covenantsql://0000000000000000000000000000000000000000000000000000000000000000",
+		Database: "0000000000000000000000000000000000000000000000000000000000000000",
 	}
 
 	expOpt := command.Options{
-		Url:    "postgres://username:password@host:port/database?sslmode=disable",
-		Host:   "localhost",
-		Port:   5432,
-		User:   "postgres",
-		Pass:   "password",
-		DbName: "mydatabase",
-		Ssl:    "disable",
+		Url:    "covenantsql://0000000000000000000000000000000000000000000000000000000000000000",
+		DbName: "0000000000000000000000000000000000000000000000000000000000000000",
 	}
 	opt := b.ConvertToOptions()
 	assert.Equal(t, expOpt, opt)

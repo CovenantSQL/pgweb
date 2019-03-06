@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if grep -q 'go/src/github.com/sosedoff/pgweb' ./pkg/data/bindata.go
+if grep -q 'go/src/github.com/CovenantSQL/pgweb' ./pkg/data/bindata.go
 then
   echo "=========================================================="
   echo "ERROR: Bindata contains development references to assets!"

@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/mitchellh/go-homedir"
-
-	"github.com/sosedoff/pgweb/pkg/command"
-	"github.com/sosedoff/pgweb/pkg/shared"
+	"github.com/CovenantSQL/pgweb/pkg/command"
+	"github.com/CovenantSQL/pgweb/pkg/shared"
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 type Bookmark struct {
@@ -31,12 +30,7 @@ func (b Bookmark) SSHInfoIsEmpty() bool {
 func (b Bookmark) ConvertToOptions() command.Options {
 	return command.Options{
 		Url:    b.Url,
-		Host:   b.Host,
-		Port:   b.Port,
-		User:   b.User,
-		Pass:   b.Password,
 		DbName: b.Database,
-		Ssl:    b.Ssl,
 	}
 }
 

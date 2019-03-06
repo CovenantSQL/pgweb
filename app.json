@@ -1,27 +1,21 @@
 {
-  "name": "pgweb",
-  "description": "A web-based frontend to your Postgres database.",
-  "website": "https://github.com/sosedoff/pgweb",
-  "repository": "https://github.com/sosedoff/pgweb",
-  "logo": "https://raw.githubusercontent.com/sosedoff/pgweb/master/static/img/icon.png",
+  "name": "cql-pgweb",
+  "description": "A web-based frontend to CovenantSQL database.",
+  "website": "https://github.com/CovenantSQL/pgweb",
+  "repository": "https://github.com/CovenantSQL/pgweb",
+  "logo": "https://raw.githubusercontent.com/CovenantSQL/pgweb/master/static/img/icon.png",
   "success_url": "/",
   "keywords": [
-    "postgres",
+    "sqlite",
+    "covenantsql",
     "database",
     "golang",
     "frontend"
   ],
-  "addons": [
-    "heroku-postgresql"
-  ],
   "env": {
-    "AUTH_USER": {
-      "description": "A username to log into pgweb.",
-      "value": "admin"
-    },
-    "AUTH_PASS": {
-      "description": "The login password. Please change this.",
-      "generator": "secret"
+    "": {
+      "description": "",
+      "value": ""
     }
   }
 }

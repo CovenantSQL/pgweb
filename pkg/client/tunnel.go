@@ -12,10 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/CovenantSQL/pgweb/pkg/connection"
+	"github.com/CovenantSQL/pgweb/pkg/shared"
 	"golang.org/x/crypto/ssh"
-
-	"github.com/sosedoff/pgweb/pkg/connection"
-	"github.com/sosedoff/pgweb/pkg/shared"
 )
 
 const (

@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/sosedoff/pgweb/pkg/command"
+	"github.com/CovenantSQL/pgweb/pkg/command"
 )
 
 // StartSessionCleanup starts a goroutine to cleanup idle database sessions

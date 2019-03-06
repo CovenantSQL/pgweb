@@ -8,10 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/CovenantSQL/pgweb/pkg/data"
+	"github.com/CovenantSQL/pgweb/pkg/shared"
 	"github.com/gin-gonic/gin"
-
-	"github.com/sosedoff/pgweb/pkg/data"
-	"github.com/sosedoff/pgweb/pkg/shared"
 )
 
 var (

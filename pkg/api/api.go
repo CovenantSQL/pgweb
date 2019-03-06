@@ -8,14 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CovenantSQL/pgweb/pkg/bookmarks"
+	"github.com/CovenantSQL/pgweb/pkg/client"
+	"github.com/CovenantSQL/pgweb/pkg/command"
+	"github.com/CovenantSQL/pgweb/pkg/connection"
+	"github.com/CovenantSQL/pgweb/pkg/shared"
 	"github.com/gin-gonic/gin"
 	"github.com/tuvistavie/securerandom"
-
-	"github.com/sosedoff/pgweb/pkg/bookmarks"
-	"github.com/sosedoff/pgweb/pkg/client"
-	"github.com/sosedoff/pgweb/pkg/command"
-	"github.com/sosedoff/pgweb/pkg/connection"
-	"github.com/sosedoff/pgweb/pkg/shared"
 )
 
 var (
@@ -202,7 +201,7 @@ func SwitchDb(c *gin.Context) {
 		return
 	}
 
-	currentUrl.Path = name
+	currentUrl.Host = name
 
 	cl, err := client.NewFromUrl(currentUrl.String(), nil)
 	if err != nil {

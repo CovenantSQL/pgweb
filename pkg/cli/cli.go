@@ -7,16 +7,15 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/CovenantSQL/pgweb/pkg/api"
+	"github.com/CovenantSQL/pgweb/pkg/bookmarks"
+	"github.com/CovenantSQL/pgweb/pkg/client"
+	"github.com/CovenantSQL/pgweb/pkg/command"
+	"github.com/CovenantSQL/pgweb/pkg/connection"
+	"github.com/CovenantSQL/pgweb/pkg/shared"
+	"github.com/CovenantSQL/pgweb/pkg/util"
 	"github.com/gin-gonic/gin"
-	"github.com/jessevdk/go-flags"
-
-	"github.com/sosedoff/pgweb/pkg/api"
-	"github.com/sosedoff/pgweb/pkg/bookmarks"
-	"github.com/sosedoff/pgweb/pkg/client"
-	"github.com/sosedoff/pgweb/pkg/command"
-	"github.com/sosedoff/pgweb/pkg/connection"
-	"github.com/sosedoff/pgweb/pkg/shared"
-	"github.com/sosedoff/pgweb/pkg/util"
+	flags "github.com/jessevdk/go-flags"
 )
 
 var options command.Options
@@ -124,15 +123,6 @@ func initOptions() {
 	if options.Version {
 		printVersion()
 		os.Exit(0)
-	}
-
-	if options.ReadOnly {
-		msg := `------------------------------------------------------
-SECURITY WARNING: You are running pgweb in read-only mode.
-This mode is designed for environments where users could potentially delete / change data.
-For proper read-only access please follow postgresql role management documentation.
-------------------------------------------------------`
-		fmt.Println(msg)
 	}
 
 	printVersion()

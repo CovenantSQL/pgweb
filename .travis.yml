@@ -8,7 +8,6 @@ services:
   - docker
 
 addons:
-  postgresql: "9.6"
 
 go:
   - 1.10.x

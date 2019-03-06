@@ -4,9 +4,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/CovenantSQL/pgweb/pkg/command"
 	"github.com/gin-gonic/gin"
-
-	"github.com/sosedoff/pgweb/pkg/command"
 )
 
 // Middleware to check database connection status before running queries

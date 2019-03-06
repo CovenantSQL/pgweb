@@ -1,38 +1,26 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	neturl "net/url"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
+	"github.com/CovenantSQL/pgweb/pkg/command"
+	"github.com/CovenantSQL/pgweb/pkg/connection"
+	"github.com/CovenantSQL/pgweb/pkg/history"
+	"github.com/CovenantSQL/pgweb/pkg/shared"
+	"github.com/CovenantSQL/pgweb/pkg/statements"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 
-	"github.com/sosedoff/pgweb/pkg/command"
-	"github.com/sosedoff/pgweb/pkg/connection"
-	"github.com/sosedoff/pgweb/pkg/history"
-	"github.com/sosedoff/pgweb/pkg/shared"
-	"github.com/sosedoff/pgweb/pkg/statements"
-)
-
-var (
-	postgresSignature = regexp.MustCompile(`(?i)postgresql ([\d\.]+)\s`)
-	postgresType      = "PostgreSQL"
-
-	cockroachSignature = regexp.MustCompile(`(?i)cockroachdb ccl v([\d\.]+)\s`)
-	cockroachType      = "CockroachDB"
+	_ "github.com/CovenantSQL/CovenantSQL/client"
 )
 
 type Client struct {
 	db               *sqlx.DB
 	tunnel           *Tunnel
-	serverVersion    string
-	serverType       string
 	lastQueryTime    time.Time
 	External         bool
 	History          []history.Record `json:"history"`
@@ -48,14 +36,6 @@ type RowsOptions struct {
 	SortOrder  string // Sort direction (ASC, DESC)
 }
 
-func getSchemaAndTable(str string) (string, string) {
-	chunks := strings.Split(str, ".")
-	if len(chunks) == 1 {
-		return "public", chunks[0]
-	}
-	return chunks[0], chunks[1]
-}
-
 func New() (*Client, error) {
 	str, err := connection.BuildStringFromOptions(command.Opts)
 
@@ -67,7 +47,7 @@ func New() (*Client, error) {
 		return nil, err
 	}
 
-	db, err := sqlx.Open("postgres", str)
+	db, err := sqlx.Open("covenantsql", str)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +58,6 @@ func New() (*Client, error) {
 		History:          history.New(),
 	}
 
-	client.setServerVersion()
 	return &client, nil
 }
 
@@ -86,47 +65,14 @@ func NewFromUrl(url string, sshInfo *shared.SSHInfo) (*Client, error) {
 	var tunnel *Tunnel
 
 	if sshInfo != nil {
-		if command.Opts.DisableSSH {
-			return nil, fmt.Errorf("ssh connections are disabled")
-		}
-		if command.Opts.Debug {
-			fmt.Println("Opening SSH tunnel for:", sshInfo)
-		}
-
-		tunnel, err := NewTunnel(sshInfo, url)
-		if err != nil {
-			tunnel.Close()
-			return nil, err
-		}
-
-		err = tunnel.Configure()
-		if err != nil {
-			tunnel.Close()
-			return nil, err
-		}
-
-		go tunnel.Start()
-
-		uri, err := neturl.Parse(url)
-		if err != nil {
-			tunnel.Close()
-			return nil, err
-		}
-
-		// Override remote postgres port with local proxy port
-		url = strings.Replace(url, uri.Host, fmt.Sprintf("127.0.0.1:%v", tunnel.Port), 1)
+		return nil, errors.New("ssh mode is not supported")
 	}
 
 	if command.Opts.Debug {
 		fmt.Println("Creating a new client for:", url)
 	}
 
-	uri, err := neturl.Parse(url)
-	if err == nil && uri.Path == "" {
-		return nil, fmt.Errorf("Database name is not provided")
-	}
-
-	db, err := sqlx.Open("postgres", url)
+	db, err := sqlx.Open("covenantsql", url)
 	if err != nil {
 		return nil, err
 	}
@@ -138,33 +84,7 @@ func NewFromUrl(url string, sshInfo *shared.SSHInfo) (*Client, error) {
 		History:          history.New(),
 	}
 
-	client.setServerVersion()
 	return &client, nil
-}
-
-func (client *Client) setServerVersion() {
-	res, err := client.query("SELECT version()")
-	if err != nil || len(res.Rows) < 1 {
-		return
-	}
-
-	version := res.Rows[0][0].(string)
-
-	// Detect postgresql
-	matches := postgresSignature.FindAllStringSubmatch(version, 1)
-	if len(matches) > 0 {
-		client.serverType = postgresType
-		client.serverVersion = matches[0][1]
-		return
-	}
-
-	// Detect cockroachdb
-	matches = cockroachSignature.FindAllStringSubmatch(version, 1)
-	if len(matches) > 0 {
-		client.serverType = cockroachType
-		client.serverVersion = matches[0][1]
-		return
-	}
 }
 
 func (client *Client) Test() error {
@@ -188,17 +108,40 @@ func (client *Client) Objects() (*Result, error) {
 }
 
 func (client *Client) Table(table string) (*Result, error) {
-	schema, table := getSchemaAndTable(table)
-	return client.query(statements.TableSchema, schema, table)
+	schemaResult, err := client.query(statements.TableSchema + table)
+	if err != nil {
+		return nil, err
+	}
+
+	schemaResult.Columns = []string{
+		"column_name",
+		"data_type",
+		"is_nullable",
+		"column_default",
+		"pk",
+	}
+
+	for i := range schemaResult.Rows {
+		// covenantsql returns: cid,name,type,notnull,dflt_value,pk
+		schemaResult.Rows[i] = Row{
+			schemaResult.Rows[i][1],                           // name
+			schemaResult.Rows[i][2],                           // type
+			fmt.Sprintf("%v", schemaResult.Rows[i][3]) == "0", // is_nullable
+			schemaResult.Rows[i][4],                           // dflt_value
+			schemaResult.Rows[i][5],                           // pk
+		}
+	}
+
+	return schemaResult, nil
 }
 
 func (client *Client) MaterializedView(name string) (*Result, error) {
-	return client.query(statements.MaterializedView, name)
+	// not supported
+	return nil, nil
 }
 
 func (client *Client) TableRows(table string, opts RowsOptions) (*Result, error) {
-	schema, table := getSchemaAndTable(table)
-	sql := fmt.Sprintf(`SELECT * FROM "%s"."%s"`, schema, table)
+	sql := fmt.Sprintf(`SELECT * FROM %s`, table)
 
 	if opts.Where != "" {
 		sql += fmt.Sprintf(" WHERE %s", opts.Where)
@@ -209,7 +152,7 @@ func (client *Client) TableRows(table string, opts RowsOptions) (*Result, error)
 			opts.SortOrder = "ASC"
 		}
 
-		sql += fmt.Sprintf(` ORDER BY "%s" %s`, opts.SortColumn, opts.SortOrder)
+		sql += fmt.Sprintf(` ORDER BY %s %s`, opts.SortColumn, opts.SortOrder)
 	}
 
 	if opts.Limit > 0 {
@@ -223,34 +166,8 @@ func (client *Client) TableRows(table string, opts RowsOptions) (*Result, error)
 	return client.query(sql)
 }
 
-func (client *Client) EstimatedTableRowsCount(table string, opts RowsOptions) (*Result, error) {
-	schema, table := getSchemaAndTable(table)
-	result, err := client.query(statements.EstimatedTableRowCount, schema, table)
-	if err != nil {
-		return nil, err
-	}
-	// float64 to int64 conversion
-	estimatedRowsCount := result.Rows[0][0].(float64)
-	result.Rows[0] = Row{int64(estimatedRowsCount)}
-
-	return result, nil
-}
-
 func (client *Client) TableRowsCount(table string, opts RowsOptions) (*Result, error) {
-	// Return postgres estimated rows count on empty filter
-	if opts.Where == "" && client.serverType == postgresType {
-		res, err := client.EstimatedTableRowsCount(table, opts)
-		if err != nil {
-			return nil, err
-		}
-		n := res.Rows[0][0].(int64)
-		if n >= 100000 {
-			return res, nil
-		}
-	}
-
-	schema, tableName := getSchemaAndTable(table)
-	sql := fmt.Sprintf(`SELECT COUNT(1) FROM "%s"."%s"`, schema, tableName)
+	sql := fmt.Sprintf(`SELECT COUNT(1) FROM %s`, table)
 
 	if opts.Where != "" {
 		sql += fmt.Sprintf(" WHERE %s", opts.Where)
@@ -260,16 +177,11 @@ func (client *Client) TableRowsCount(table string, opts RowsOptions) (*Result, e
 }
 
 func (client *Client) TableInfo(table string) (*Result, error) {
-	if client.serverType == cockroachType {
-		return client.query(statements.TableInfoCockroach)
-	}
-	schema, table := getSchemaAndTable(table)
-	return client.query(statements.TableInfo, fmt.Sprintf(`"%s"."%s"`, schema, table))
+	return client.query(statements.TableInfo + table)
 }
 
 func (client *Client) TableIndexes(table string) (*Result, error) {
-	schema, table := getSchemaAndTable(table)
-	res, err := client.query(statements.TableIndexes, schema, table)
+	res, err := client.query(statements.TableIndexes + table)
 
 	if err != nil {
 		return nil, err
@@ -279,29 +191,14 @@ func (client *Client) TableIndexes(table string) (*Result, error) {
 }
 
 func (client *Client) TableConstraints(table string) (*Result, error) {
-	schema, table := getSchemaAndTable(table)
-	res, err := client.query(statements.TableConstraints, schema, table)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return res, err
+	// not supported
+	return nil, nil
 }
 
 // Returns all active queriers on the server
 func (client *Client) Activity() (*Result, error) {
-	if client.serverType == cockroachType {
-		return client.query("SHOW QUERIES")
-	}
-
-	version := getMajorMinorVersion(client.serverVersion)
-	query := statements.Activity[version]
-	if query == "" {
-		query = statements.Activity["default"]
-	}
-
-	return client.query(query)
+	// not supported
+	return nil, nil
 }
 
 func (client *Client) Query(query string) (*Result, error) {
@@ -315,22 +212,8 @@ func (client *Client) Query(query string) (*Result, error) {
 	return res, err
 }
 
-func (client *Client) SetReadOnlyMode() error {
-	var value string
-	if err := client.db.Get(&value, "SHOW default_transaction_read_only;"); err != nil {
-		return err
-	}
-
-	if value == "off" {
-		_, err := client.db.Exec("SET default_transaction_read_only=on;")
-		return err
-	}
-
-	return nil
-}
-
 func (client *Client) ServerVersion() string {
-	return fmt.Sprintf("%s %s", client.serverType, client.serverVersion)
+	return "CovenantSQL/1.0"
 }
 
 func (client *Client) query(query string, args ...interface{}) (*Result, error) {
@@ -339,19 +222,10 @@ func (client *Client) query(query string, args ...interface{}) (*Result, error) 
 		client.lastQueryTime = time.Now().UTC()
 	}()
 
-	// We're going to force-set transaction mode on every query.
-	// This is needed so that default mode could not be changed by user.
-	if command.Opts.ReadOnly {
-		if err := client.SetReadOnlyMode(); err != nil {
-			return nil, err
-		}
-		if containsRestrictedKeywords(query) {
-			return nil, errors.New("query contains keywords not allowed in read-only mode")
-		}
-	}
-
 	action := strings.ToLower(strings.Split(query, " ")[0])
-	if action == "update" || action == "delete" {
+	if action == "update" || action == "delete" ||
+		action == "create" || action == "insert" ||
+		action == "replace" {
 		res, err := client.db.Exec(query, args...)
 		if err != nil {
 			return nil, err
@@ -365,7 +239,7 @@ func (client *Client) query(query string, args ...interface{}) (*Result, error) 
 		result := Result{
 			Columns: []string{"Rows Affected"},
 			Rows: []Row{
-				Row{affected},
+				{affected},
 			},
 		}
 

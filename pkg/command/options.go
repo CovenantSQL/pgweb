@@ -3,22 +3,16 @@ package command
 import (
 	"errors"
 	"os"
-	"os/user"
 	"strings"
 
-	"github.com/jessevdk/go-flags"
+	flags "github.com/jessevdk/go-flags"
 )
 
 type Options struct {
 	Version                      bool   `short:"v" long:"version" description:"Print version"`
 	Debug                        bool   `short:"d" long:"debug" description:"Enable debugging mode"`
 	Url                          string `long:"url" description:"Database connection string"`
-	Host                         string `long:"host" description:"Server hostname or IP" default:"localhost"`
-	Port                         int    `long:"port" description:"Server port" default:"5432"`
-	User                         string `long:"user" description:"Database user"`
-	Pass                         string `long:"pass" description:"Password for user"`
 	DbName                       string `long:"db" description:"Database name"`
-	Ssl                          string `long:"ssl" description:"SSL option"`
 	HttpHost                     string `long:"bind" description:"HTTP server host" default:"localhost"`
 	HttpPort                     uint   `long:"listen" description:"HTTP server listen port" default:"8081"`
 	AuthUser                     string `long:"auth-user" description:"HTTP basic auth user"`
@@ -26,12 +20,10 @@ type Options struct {
 	SkipOpen                     bool   `short:"s" long:"skip-open" description:"Skip browser open on start"`
 	Sessions                     bool   `long:"sessions" description:"Enable multiple database sessions"`
 	Prefix                       string `long:"prefix" description:"Add a url prefix"`
-	ReadOnly                     bool   `long:"readonly" description:"Run database connection in readonly mode"`
 	LockSession                  bool   `long:"lock-session" description:"Lock session to a single database connection"`
 	Bookmark                     string `short:"b" long:"bookmark" description:"Bookmark to use for connection. Bookmark files are stored under $HOME/.pgweb/bookmarks/*.toml" default:""`
 	BookmarksDir                 string `long:"bookmarks-dir" description:"Overrides default directory for bookmark files to search" default:""`
 	DisablePrettyJson            bool   `long:"no-pretty-json" description:"Disable JSON formatting feature for result export"`
-	DisableSSH                   bool   `long:"no-ssh" description:"Disable database connections via SSH"`
 	ConnectBackend               string `long:"connect-backend" description:"Enable database authentication through a third party backend"`
 	ConnectToken                 string `long:"connect-token" description:"Authentication token for the third-party connect backend"`
 	ConnectHeaders               string `long:"connect-headers" description:"List of headers to pass to the connect backend"`
@@ -59,16 +51,6 @@ func ParseOptions(args []string) (Options, error) {
 		opts.Prefix = os.Getenv("URL_PREFIX")
 	}
 
-	// Handle edge case where pgweb is started with a default host `localhost` and no user.
-	// When user is not set the `lib/pq` connection will fail and cause pgweb's termination.
-	if (opts.Host == "localhost" || opts.Host == "127.0.0.1") && opts.User == "" {
-		if username := GetCurrentUser(); username != "" {
-			opts.User = username
-		} else {
-			opts.Host = ""
-		}
-	}
-
 	if os.Getenv("SESSIONS") != "" {
 		opts.Sessions = true
 	}
@@ -81,11 +63,7 @@ func ParseOptions(args []string) (Options, error) {
 	if opts.Sessions || opts.ConnectBackend != "" {
 		opts.Bookmark = ""
 		opts.Url = ""
-		opts.Host = ""
-		opts.User = ""
-		opts.Pass = ""
 		opts.DbName = ""
-		opts.Ssl = ""
 	}
 
 	if opts.Prefix != "" && !strings.Contains(opts.Prefix, "/") {
@@ -124,13 +102,4 @@ func SetDefaultOptions() error {
 	}
 	Opts = opts
 	return nil
-}
-
-// GetCurrentUser returns a current user name
-func GetCurrentUser() string {
-	u, _ := user.Current()
-	if u != nil {
-		return u.Username
-	}
-	return os.Getenv("USER")
 }
